@@ -5,7 +5,8 @@ import App from './App'
 import { ApolloProvider } from 'react-apollo'
 import { ApolloProvider as ApolloHooksProvider } from 'react-apollo-hooks'
 
-import { ApolloClient } from 'apollo-client'
+import ApolloClient from 'apollo-client'
+//import { ApolloClient } from 'apollo-client'
 import { createHttpLink } from 'apollo-link-http'
 import { InMemoryCache } from 'apollo-cache-inmemory'
 import { setContext } from 'apollo-link-context'
@@ -24,11 +25,14 @@ const httpLink = createHttpLink({
 })
 
 const authLink = setContext((_, { headers }) => {
+  console.log(localStorage)
   const token = localStorage.getItem('library-user-token')
+  console.log('the token', token)
+  
   return {
     headers: {
       ...headers,
-      authorization: token ? `bearer ${token}` : null,
+      authorization: token ? `Bearer ${token}` : null,
     }
   }
 })
@@ -39,11 +43,10 @@ const link = split(
     return kind === 'OperationDefinition' && operation === 'subscription'
   },
   wsLink,
-  authLink.concat(httpLink),
-)
+  authLink.concat(httpLink))
 
 const client = new ApolloClient({
-  link,
+  link: link,
   cache: new InMemoryCache()
 })
 

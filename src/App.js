@@ -38,7 +38,10 @@ const ALL_AUTHORS = gql`
   allAuthors {
     name
     born
-    bookCount
+    bookCount {
+      title
+    }
+    id
   }
 }
 `
@@ -57,38 +60,11 @@ const ALL_BOOKS = gql`
 
 `
 
-const ALL_BOOKS_AND_USER = gql`
-{
-  allBooks {
-    title
-    author {
-      name
-    }
-    published
-  }
-  me {
-    username
-    favoriteGenre
-  }
-}
-`
-
-// const ALL_BOOKS_FROM_GENRE = gql`
-
-//   query allBooksWithGenre($genre: String) {
-//     allBooks(genre: $genre) {
-//       title
-//       author {
-//         name
-//       }
-//       published
-//     }
-//   }
-// `
 
 const USER_INFO = gql`
 {
   me {
+    username
     favoriteGenre
   }
 }
@@ -131,56 +107,56 @@ const LOGIN = gql`
 const App = () => {
   const [page, setPage] = useState('authors')
   const [token, setToken] = useState(null)
-  const [userGenre, setUserGenre] = useState('')
   const client = useApolloClient()
 
   useEffect(() => {
-    setToken(localStorage.getItem('library-user-token', token))
-  }, [])
+    const foundToken = window.localStorage.getItem('library-user-token')
+    setToken(foundToken)
+  }, [token])
 
   const logout = () => {
     setToken(null)
-    localStorage.clear()
+    window.localStorage.clear()
     client.resetStore()
   }
+
+  const includedIn = (set, object) => 
+    set.map(p => p.id).includes(object.id)
 
   const login = useMutation(LOGIN)
 
   const result = useQuery(ALL_AUTHORS)
   const resultBooks = useQuery(ALL_BOOKS)
-  const editAuthor = useMutation(EDIT_AUTHOR)
+  const editAuthor = useMutation(EDIT_AUTHOR, {
+    refetchQueries: [{query: ALL_AUTHORS}]
+  })
   const addBook = useMutation(CREATE_BOOK, {
+    refetchQueries: [{ query: ALL_BOOKS }, {query: ALL_AUTHORS}],
     update: (store, response) => {
       const dataInStore = store.readQuery({ query: ALL_BOOKS })
+      console.log('the data in store', dataInStore)
+      const authorsInStore = store.readQuery({ query: ALL_AUTHORS})
       const addedBook = response.data.addBook
       
       if (!includedIn(dataInStore.allBooks, addedBook)) {
-        console.log('book here in dataInStore')
         dataInStore.allBooks.push(addedBook)
         client.writeQuery({
           query: ALL_BOOKS,
           data: dataInStore
         })
+
+        client.writeQuery({
+          query: ALL_AUTHORS,
+          data: authorsInStore
+        })
       }
     }
-  })
-    //, {
-    // update: (store, response) => {
-    //   const dataInStore = store.readQuery({ query: ALL_BOOKS })
-    //   console.log('read')
-    //   dataInStore.allBooks.push(response.data.addBook)
-    //   console.log('added')
-    //   store.writeQuery({
-    //     query: ALL_BOOKS,
-    //     data: dataInStore
-    //   })
-    //   console.log('done')
-    // }}
+    }
+  )
     
   const userFound = useQuery(USER_INFO)
 
-  const includedIn = (set, object) => 
-    set.map(p => p.id).includes(object.id)  
+
 
   if (!token) {
     return (
@@ -201,14 +177,6 @@ const App = () => {
     </div>
     )
   }
-
-  // if (token) {
-  //   useEffect(() => {
-  //   const usrQuery = useQuery(USER_INFO)
-  //   console.log(usrQuery.data)
-  //   setUserGenre(usrQuery.data.favoriteGenre)
-  //   }, [])
-  // }
 
   return (
     <div>
@@ -232,6 +200,7 @@ const App = () => {
           window.alert(addedBook.title + ' added')
 
           const dataInStore = client.readQuery({ query: ALL_BOOKS })
+          const authorsInStore = client.readQuery({ query: ALL_AUTHORS })
           if (!includedIn(dataInStore.allBooks, addedBook)) {
             console.log('book added to dataInStore...')
             dataInStore.allBooks.push(addedBook)
@@ -239,22 +208,14 @@ const App = () => {
               query: ALL_BOOKS,
               data: dataInStore
             })
+
+            client.writeQuery({
+              query: ALL_AUTHORS,
+              data: authorsInStore
+            })
           }
         }}
-      /> 
-
-{/* 
-      </ApolloConsumer>
-      <ApolloConsumer>
-        {(client => 
-          <Query query={ALL_BOOKS_AND_USER}>
-            {(result) => 
-            <BookForm books={result} show={page === 'recommend'} />
-            }
-          </Query> 
-        )}
-      </ApolloConsumer> */}
-
+      />
     </div>
   )
 }

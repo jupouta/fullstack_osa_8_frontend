@@ -1,7 +1,6 @@
-import React, { useState } from 'react'
+import React from 'react'
 
 const BookForm = (props) => {
-    //const [genre, setGenre] = useState('')
 
     if (!props.show) {
         return null
@@ -12,18 +11,14 @@ const BookForm = (props) => {
       }
     
     const books = props.books.data.allBooks
-    console.log(props.userFound)
-    //const genres = books.map(book => book.genres)
-    //setGenre('agile')
-    const genre = 'agile'
-    //if (props.userFound.data === {}) setGenre("agile")
-    //else setGenre(props.userFound.data.favoriteGenre)
-    const newBooks = books.filter(book => book.genres.includes(genre))
+    const userGenre = props.userFound.data.me.favoriteGenre
+
+    const newBooks = books.filter(book => book.genres.includes(userGenre))
 
     return (
         <div>
           <h2>recommendations</h2>
-        <div>books in your favorite genre <b>{genre}</b></div>
+        <div>books in your favorite genre <b>{userGenre}</b></div>
           <table>
             <tbody>
               <tr>
